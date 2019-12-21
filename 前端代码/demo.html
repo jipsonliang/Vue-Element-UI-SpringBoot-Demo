@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <!-- import CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css">
+    <style>
+        .el-form-item {
+            width: 80%;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="app">
+        <!-- 弹出表单 -->
+        <el-dialog title="新增客户" :visible.sync="dialogFormVisible">
+            <el-form :model="form">
+                <el-form-item label="客户姓名" :label-width="formLabelWidth">
+                    <el-input v-model="form.name" autocomplete="off"></el-input>
+                </el-form-item>
+                <el-form-item label="性别" :label-width="formLabelWidth">
+                    <el-radio-group v-model="form.sex">
+                        <el-radio label="男"></el-radio>
+                        <el-radio label="女"></el-radio>
+                    </el-radio-group>
+                </el-form-item>
+                <el-form-item label="联系电话" :label-width="formLabelWidth">
+                    <el-input v-model="form.tell" autocomplete="off"></el-input>
+                </el-form-item>
+                <el-form-item label="地址" :label-width="formLabelWidth">
+                    <el-input v-model="form.addr" autocomplete="off"></el-input>
+                </el-form-item>
+
+                <el-form-item :label-width="formLabelWidth">
+                    <el-button type="primary" @click="addOrEdit()">确 定</el-button>
+                    <el-button @click="dialogFormVisible = false">取 消</el-button>
+                </el-form-item>
+
+            </el-form>
+        </el-dialog>
+
+        <template>
+            <!-- 新增、删除按钮 -->
+            <el-row>
+                <el-button type="primary" @click="open()" icon="el-icon-edit" circle></el-button>
+                <el-button type="danger" @click="del()" :disabled="idList.length>0?false:true" icon="el-icon-delete"
+                    circle></el-button>
+            </el-row>
+            <!-- 列表 -->
+            <el-table :data="tableData" @selection-change="selectionChange" style="width: 100%">
+                <el-table-column type="selection" width="55">
+                </el-table-column>
+                <el-table-column prop="id" label="编号" width="180">
+                </el-table-column>
+                <el-table-column prop="name" label="姓名" width="180">
+                </el-table-column>
+                <el-table-column prop="sex" label="性别" width="180">
+                </el-table-column>
+                <el-table-column prop="tell" label="联系电话" width="180">
+                </el-table-column>
+                <el-table-column prop="addr" label="地址">
+                </el-table-column>
+            </el-table>
+        </template>
+        <!-- 分页 -->
+        <el-pagination v-if="page.total>page.size" background layout="prev, pager, next" @current-change="currentChange"
+            :page-size="page.size" :current-page="page.current" :total="page.total">
+        </el-pagination>
+    </div>
+</body>
+
+<!-- import Vue before Element -->
+<script src="https://unpkg.com/vue/dist/vue.js"></script>
+<!-- import JavaScript -->
+<script src="https://unpkg.com/element-ui/lib/index.js"></script>
+<script src="https://cdn.staticfile.org/vue-resource/1.5.1/vue-resource.min.js"></script>
+<script src="static/comm/Ajax.js"></script>
+<script>
+    var Main = {
+        data() {
+            return {
+                tableData: [],
+                page: {
+                    current: 1,
+                    size: 3,
+                    total: 0
+                },
+                idList: [],
+                //表单相关
+                form: {
+                    id: '',
+                    name: '',
+                    sex: '男',
+                    tell: '',
+                    addr: ''
+                },
+                dialogFormVisible: false,
+                formLabelWidth: '120px'
+            }
+        },
+
+        //web页面初始化时，调用
+        created() {
+            this.ajax = new Ajax(this);
+            this.getData();
+        },
+
+        //定义一些方法，放在这里面
+        methods: {
+            //通过ajax去请求服务端，获取数据
+            getData() {
+                let that = this;
+                let url = "custumerTable?current=" + that.page.current
+                    + "&size=" + that.page.size;
+
+                that.ajax.get(url, function (rs) {
+                    if (rs.code == 0) {//判断是否正常返回数据
+                        that.tableData = rs.data.records;
+                        that.page.total = rs.data.total;
+                    }
+
+                })
+            },
+
+            //点击当前页
+            currentChange(current) {
+                // console.log(current);
+                //获取点击的当前页
+                this.page.current = current;
+                //重新获得该页的数据
+                this.getData();
+            },
+
+            //行选择触发事件
+            selectionChange(selection) {
+                console.log(selection);
+                //选中的id
+                this.idList = [];
+                selection.forEach(element => {
+                    this.idList.push(element.id);
+                });
+                //选中一行
+                if(selection.length == 1){
+                    let data = selection[0];
+                    if(data){//如果有数据,则将数据赋值给表单内容
+                        this.form.id=data.id;
+                        this.form.name=data.name;
+                        this.form.sex=data.sex;
+                        this.form.tell=data.tell;
+                        this.form.addr=data.addr;
+                    }
+                }
+                //如果没有选中数据，将表单内容初始化
+                if(selection.length == 0){
+                    this.initForm();
+                }
+            },
+
+            open() {
+                // 判断是否有任意行被选中,有则显示当前行的数据，没有则表单为空
+                length = this.idList.length
+                    // console.log(length);
+                    // 选中多行
+                if (length > 1) {
+                    this.warntip()
+                    return
+                }
+                // 没选中任意一行 
+                else if (this.idList == 0)
+                    this.dialogFormVisible = true
+                    //选中一行 
+                else {
+                    this.dialogFormVisible = true
+                }
+            },
+
+            del() {
+                let that = this;
+                let idList = that.idList.toString();
+                let url = "custumerTable?idList=" + idList;
+
+                that.ajax.delete(url, function (rs) {
+                    if (rs.code == 0) {
+                        that.successTip();
+                        that.getData();
+                    }
+                })
+            },
+
+            add() {//看后台控制类，用post方法
+                let that = this;
+                console.log(that.form);
+                let url = "custumerTable";
+                that.ajax.post(url, function (rs) {
+                    if (rs.code == 0) {
+                        //更新数据
+                        that.getData();
+                        //让弹窗消失
+                        that.dialogFormVisible = false;
+                    }
+                }, that.form);
+            },
+
+            edit() {//看后台控制类，用put方法
+                let that = this;
+                console.log(that.form);
+                let url = "custumerTable";
+                that.ajax.put(url, function (rs) {
+                    if (rs.code == 0) {
+                        that.successTip();
+                        //更新数据
+                        that.getData();
+                        //让弹窗消失
+                        that.dialogFormVisible = false;
+                    }
+                }, that.form);
+            },
+
+            addOrEdit() {
+                let that = this;
+                console.log(that.form);
+                let url = "custumerTable";
+                if (that.idList.length == 0) {
+                    //添加
+                    that.add();
+                } else {
+                    //修改
+                    that.edit();
+                }
+            },
+
+            initForm() {
+                this.form = {
+                        id: '',
+                        name: '',
+                        sex: '男',
+                        tell: '',
+                        addr: ''
+                    }
+            },
+
+            successTip() {
+                this.$message({
+                    message: "操作成功",
+                    type: 'success'
+                })
+            },
+            warntip() {
+                this.$message({
+                    message:"只能选一行",
+                    type:'warning'
+                })
+            },
+            errorTip() {
+                this.$message.error('操作失败！');
+            },
+        }
+    }
+    var Ctor = Vue.extend(Main)
+    new Ctor().$mount('#app')
+</script>
+
+</html>
